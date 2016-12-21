@@ -69,7 +69,7 @@ void usage(char* argv0)
 
 void reCout(const string &anm, PedMap &pm, set<string> &resultSet)
 {
-    if(resultSet.find(anm)!=resultSet.end())    // already in
+    if(resultSet.find(anm)!=resultSet.end() && recGenMax==0)    // already in, and no recGen restriction
         return;
     if(recGenMax>0 && ++recGen>recGenMax)
     {
