@@ -69,6 +69,14 @@ void usage(char* argv0)
 
 void reCout(const string &anm, PedMap &pm, set<string> &resultSet)
 {
+    /* 2017-01-25 KNOWN BUG:
+     *      In a complex pedigree, if I set recGenMax = 3 and I got phenotypic data from both
+     *          A and GA (grand sire of A), and GA appeared in front of A in the input pedigree,
+     *          GA would be finally processed as 'GA,0,0' which is not my original intention.
+     *          It is supposed to be 3 generations for EACH individuals in the animal list file.
+     *
+     *      Use the python version instead!
+     */
     if(resultSet.find(anm)!=resultSet.end() && recGenMax==0)    // already in, and no recGen restriction
         return;
     if(recGenMax>0 && ++recGen>recGenMax)
