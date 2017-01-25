@@ -227,24 +227,23 @@ class PedRefiner:
 
         return self.isValid
 
-    def __single_populate(self, idx):
+    def __single_populate_opt_map(self, idx):
         if idx in self.opt_map and self.rec_gen_max == 0:  # already in output ped, and no recGen restriction
             return
 
         self.rec_gen += 1
         if self.rec_gen > self.rec_gen_max > 0:
-            if idx != self.missing_out:
+            if idx != self.missing_out and idx not in self.opt_map:
                 self.opt_map[idx] = (self.missing_out, self.missing_out)
-                self.opt_vec.append(idx)
             self.rec_gen -= 1
             return
 
         if idx in self.ped_map:     # in input ped
             sire, dam = self.ped_map[idx]
             if sire != self.missing_out:
-                self.__single_populate(sire)
+                self.__single_populate_opt_map(sire)
             if dam != self.missing_out:
-                self.__single_populate(dam)
+                self.__single_populate_opt_map(dam)
 
             # 20150629: prevent loop
             if sire == self.stem or dam == self.stem:
@@ -254,8 +253,6 @@ class PedRefiner:
 
         if idx != self.missing_out:
             self.opt_map[idx] = (sire, dam)
-            if idx not in self.opt_vec:
-                self.opt_vec.append(idx)
 
         self.rec_gen -= 1
 
@@ -266,7 +263,20 @@ class PedRefiner:
         for idx in anm_list:
             self.stem = idx
             self.rec_gen = 1
-            self.__single_populate(idx)
+            self.__single_populate_opt_map(idx)
+        
+        # make a sorted list in self.opt_vec
+        for idx in self.opt_map:
+            self.__single_populate_opt_vec(idx)
+            
+    def __single_populate_opt_vec(self, idx):
+        sire, dam = self.opt_map[idx]
+        if sire != self.missing_out:
+            self.__single_populate_opt_vec(sire)
+        if dam != self.missing_out:
+            self.__single_populate_opt_vec(dam)
+        if idx not in self.opt_vec:
+            self.opt_vec.append(idx)
 
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, flag_r=False, xref_fn=None, missing_in='.', missing_out='.',
                  sep_in=',', sep_out=','):
