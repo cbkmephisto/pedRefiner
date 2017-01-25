@@ -38,7 +38,7 @@ class PedRefiner:
         self.missing_out = '.'
         self.stem = ""
         self.stem_fault = False
-        logging.basicConfig(level=logging.INFO)
+        logging.basicConfig(level=logging.DEBUG)
         self.l = logging.getLogger('PedMap')
         # 20150702 mapXref
         self.mapXrefA = {}
@@ -50,7 +50,7 @@ class PedRefiner:
         self.ped_map = {}     # holding original pedigree info
         self.opt_map = {}     # holding output pedigree set
         self.opt_vec = []
-        self.l.info("PedRefiner: [load_xref_map(),] load_ped(), refine()")
+        self.l.info("PedRefiner().pipeline\n{}".format(self.pipeline.__doc__))
 
     def load_xref_map(self, file_name):
         """
@@ -58,6 +58,9 @@ class PedRefiner:
         :return: bool, True if success
         """
         ret = False
+        self.mapXrefA = {}
+        self.mapXrefS = {}
+        self.mapXrefD = {}
         if os.path.exists(file_name):
             ret = True
             with open(file_name, 'r') as fp:
@@ -88,6 +91,7 @@ class PedRefiner:
     def load_ped(self, file_name, sep=",", missing_in='.', missing_out='.'):
         self.missing_in = missing_in
         self.missing_out = missing_out
+        self.ped_map = {}
         if os.path.exists(file_name):
             with open(file_name, 'r') as fp:
                 for line in fp:
@@ -152,8 +156,10 @@ class PedRefiner:
 
         map_s2i = {}
         map_d2i = {}   # map Sire/Dam 2 Integer(count)
+        self.mapID2Gender = {}
+
         # filling the sets
-        self.l.info("   - filling maps[ID -> parents]")
+        # self.l.debug("filling maps[ID -> parents]")
         for k in self.ped_map:
             s, d = self.ped_map[k]
             if s not in map_s2i:  # new
@@ -204,30 +210,36 @@ class PedRefiner:
             with open(list_file_name, 'r') as fp:
                 anm_list = fp.read().splitlines()
 
+            self.l.debug("we got {} individuals in the grep list".format(len(anm_list)))
             self.__populate_opt_map(anm_list, rec_gen_max)  # filling result set: opt_map
+            self.l.debug("we got {} individuals in the output list".format(len(self.opt_vec)))
+
             if self.stem_fault:
                 self.l.error(" *L Pedigree loop detected while filling result set, stem = {}".format(self.stem))
             self.isValid = True
+
+            with open(opt_file_name, 'w') as fp:
+                for idx in self.opt_vec:
+                    fp.write("{0}{2}{1[0]}{2}{1[1]}\n".format(idx, self.opt_map[idx], sep_out))
         else:
             self.l.error(" * AnimalID list file {} could not be open to read.".format(list_file_name))
             self.isValid = False
 
-        with open(opt_file_name, 'w') as fp:
-            for idx in self.opt_vec:
-                fp.write("{0}{2}{1[0]}{2}{1[1]}\n".format(idx, self.opt_map[idx], sep_out))
         return self.isValid
 
     def __single_populate(self, idx):
-        if idx in self.opt_map and self.rec_gen_max == 0:  # already in, and no recGen restriction
+        if idx in self.opt_map and self.rec_gen_max == 0:  # already in output ped, and no recGen restriction
             return
 
         self.rec_gen += 1
-        if self.rec_gen >= self.rec_gen_max > 0 and idx != self.missing_out:
-            self.opt_map[idx] = (self.missing_out, self.missing_out)
+        if self.rec_gen > self.rec_gen_max > 0:
+            if idx != self.missing_out:
+                self.opt_map[idx] = (self.missing_out, self.missing_out)
+                self.opt_vec.append(idx)
             self.rec_gen -= 1
             return
 
-        if idx in self.ped_map:     # already in
+        if idx in self.ped_map:     # in input ped
             sire, dam = self.ped_map[idx]
             if sire != self.missing_out:
                 self.__single_populate(sire)
@@ -241,8 +253,9 @@ class PedRefiner:
             sire = dam = self.missing_out
 
         if idx != self.missing_out:
-            self.opt_vec.append(idx)
             self.opt_map[idx] = (sire, dam)
+            if idx not in self.opt_vec:
+                self.opt_vec.append(idx)
 
         self.rec_gen -= 1
 
@@ -258,20 +271,35 @@ class PedRefiner:
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, flag_r=False, xref_fn=None, missing_in='.', missing_out='.',
                  sep_in=',', sep_out=','):
         """
-        pedRefiner pipeline
-        :param lst_fn:          file containing animal list to ge grepped from the pedigree, one line each
-        :param ped_fn:          input pedigree file, 3 col
-        :param opt_fn:          output pedigree file, 3col
-        :param gen_max:         maximum recursive generation to grep for EVERYONE in lst_fn
-        :param flag_r:          bool, output descendant IDs if True
-        :param xref_fn:         cross-reference file to modify output pedigree
-        :param missing_in:      missing value for input file, default = '.'
-        :param missing_out:     missing value for output file, default = '.'
-        :param sep_in:          separator for input file, default = ',' i.e. csv
-        :param sep_out:         separator for output file, default = ',', i.e. csv
-        :return:                None
+        Suggested usage of PedRefiner: the pipeline() method.
+
+        :param lst_fn:              file containing animal list to be grepped from the pedigree, one line each
+        :param ped_fn:              input pedigree file, 3 col
+        :param opt_fn:              output pedigree file, 3 col
+        :param gen_max:     (0)     maximum recursive generation to grep for EVERYONE in lst_fn
+        :param flag_r:      (False) bool, output descendant IDs if True
+        :param xref_fn:     (None)  cross-reference file to modify output pedigree
+        :param missing_in:  ('.')   missing value for input file, default = '.'
+        :param missing_out: ('.')   missing value for output file, default = '.'
+        :param sep_in:      (',')   separator for input file, default = ',' i.e. csv
+        :param sep_out:     (',')   separator for output file, default = ',', i.e. csv
+
+
+        Example
+
+            from pedRefiner import PedRefiner
+            pr = PedRefiner()
+            pr.pipeline('animal_list', 'ped.input.csv', 'ped.output.csv', gen_max=3)
+
         """
         if xref_fn is not None:
             self.load_xref_map(xref_fn)
         if self.load_ped(ped_fn, sep_in, missing_in, missing_out) and self.check():
             self.refine(lst_fn, opt_fn, gen_max, sep_out, flag_r)
+
+if __name__ == "__main__":
+    pr = PedRefiner()
+    pr.pipeline('/Volumes/data/epds/ASA_20150714_Carcass_analysis_w_BWCG/20161218-newRefine/lstID',  # lst_fn
+                '/Volumes/data/epds/ASA_20150714_Carcass_analysis_w_BWCG/20161218-newRefine/pedAll.csv',
+                '/Volumes/data/epds/ASA_20150714_Carcass_analysis_w_BWCG/20161218-newRefine/opt.pedpy.csv',
+                3)
