@@ -102,6 +102,7 @@ class PedRefiner:
             with open(file_name, 'r') as fp:
                 line_vec = fp.read().splitlines()
 
+            self.isValid = True
             for line in line_vec:
                 if not self.__load_line(line, sep):    # get rid of \n
                     self.isValid = False
@@ -226,17 +227,17 @@ class PedRefiner:
 
             if self.stem_fault:
                 self.l.error("  * L Pedigree loop detected while filling result set, stem = {}".format(self.stem))
-            self.isValid = True
-
-            self.l.debug("writing output")
-            with open(opt_file_name, 'w') as fp:
-                for idx in self.opt_set:    # self.opt_vec: # TODO: was vec
-                    fp.write("{0}{2}{1[0]}{2}{1[1]}\n".format(idx, self.opt_map[idx], sep_out))
+            else:
+                self.isValid = True
+                self.l.debug("writing output")
+                with open(opt_file_name, 'w') as fp:
+                    for idx in self.opt_set:    # self.opt_vec:
+                        fp.write("{0}{2}{1[0]}{2}{1[1]}\n".format(idx, self.opt_map[idx], sep_out))
         else:
             self.l.error(" * AnimalID list file {} could not be open to read.".format(list_file_name))
             self.isValid = False
 
-        self.l.debug("returning [{}]".format(self.isValid))
+        self.l.debug("refine() is returning [{}]".format(self.isValid))
         return self.isValid
 
     def __single_populate_opt_map(self, idx):
@@ -329,8 +330,15 @@ class PedRefiner:
             self.l.debug('loading xref')
             self.load_xref_map(xref_fn)
         self.l.debug('loading ped and then check')
-        if self.load_ped(ped_fn, sep_in, missing_in, missing_out) and self.check():
-            self.refine(lst_fn, opt_fn, int(gen_max), sep_out, bool(flag_r))
+        ret_load = self.load_ped(ped_fn, sep_in, missing_in, missing_out)
+        ret_check = self.check()
+        if ret_load:
+            if ret_check:
+                self.refine(lst_fn, opt_fn, int(gen_max), sep_out, bool(flag_r))
+            else:
+                self.l.error('error checking pedigree')
+        else:
+            self.l.error('error loading input pedigree')
 
     def help(self):
         print(self.pipeline.__doc__)
