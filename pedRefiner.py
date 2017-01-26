@@ -28,6 +28,7 @@
 import os
 import sys
 import logging
+from collections import OrderedDict
 
 
 class PedRefiner:
@@ -52,8 +53,9 @@ class PedRefiner:
         self.mapID2SetOffspring = {}
         self.ped_map = {}     # holding original pedigree info
         self.opt_map = {}     # holding output pedigree set
-        self.opt_vec = []
-        self.opt_set = set()
+#        self.opt_vec = []
+#        self.opt_set = set()
+        self.opt_set = OrderedDict()
         # self.l.info("PedRefiner().pipeline\n{}".format(self.pipeline.__doc__))
 
     def load_xref_map(self, file_name):
@@ -98,26 +100,27 @@ class PedRefiner:
         self.ped_map = {}
         if os.path.exists(file_name):
             with open(file_name, 'r') as fp:
-                for line in fp:
-                    self.isValid = self.__load_line(line, sep)
-                    if not self.isValid:
-                        break
+                line_vec = fp.read().splitlines()
+
+            for line in line_vec:
+                if not self.__load_line(line, sep):    # get rid of \n
+                    self.isValid = False
+                    break
         return self.isValid
 
     def __load_line(self, line, sep=","):
         ret = True
-        vec_tmp = line.rstrip().split(sep)
-        if len(vec_tmp) != 3:
-            self.l.error("  * Error reading ped file: not a 3-col csv file, line starting with {}".format(vec_tmp[0]))
-            self.l.error("    number of columns read: {}".format(len(vec_tmp)))
-            ret = False
-        else:
+        len_x = 1 + line.count(sep)
+        if len_x == 3:
+            vec_tmp = line.split(sep)
             for i in range(3):
-                if len(vec_tmp[i]) == 0 or vec_tmp[i] == self.missing_in:
-                    vec_tmp[i] = self.missing_out
+                idx = vec_tmp[i]
+                if idx == self.missing_in:
+                    idx = self.missing_out
                 # 20150702 mapXref
-                if vec_tmp[i] in self.mapXrefA:   # vec_tmp[i] is in the xrefA map
-                    vec_tmp[i] = self.mapXrefA[vec_tmp[i]]
+                if idx in self.mapXrefA:   # vec_tmp[i] is in the xrefA map
+                    idx = self.mapXrefA[idx]
+                vec_tmp[i] = idx
             idx, sire, dam = vec_tmp
             if sire in self.mapXrefS:       # vec_tmp[1] is in the xrefS map
                 sire = self.mapXrefS[sire]
@@ -149,6 +152,10 @@ class PedRefiner:
                     self.l.warning("       version1: {0}{2}{1[0]}{2}{1[1]}".format(idx, self.ped_map[idx], sep))
                     self.ped_map[idx] = p
                     self.l.warning("       version2: {0}{2}{1[0]}{2}{1[1]}".format(idx, self.ped_map[idx], sep))
+        else:
+            self.l.error("  * Error reading ped file: not a 3-col csv file, line {}".format(line))
+            self.l.error("    number of columns read: {}".format(len_x))
+            ret = False
 
         return ret
 
@@ -181,8 +188,8 @@ class PedRefiner:
         # make sure the two sets excludes each other
         # inserting intersection of Sire and Dam
         # print out the intersection and its count to support what gender it was
-        intersection = [x for x in set(map_s2i.keys()).intersection(set(map_d2i.keys())) if x != self.missing_out]
-        if len(intersection):
+        intersection = set(map_s2i.keys()).intersection(map_d2i.keys())
+        if len(intersection) > 1:  # 1 is always self.missing_out
             self.l.warning("  * B Error: IDs appeared in both sire and dam columns. Use 'xref.CorrectB'" +
                            " as a xref file for the next run.")
             self.l.warning("    - creating 'xref.CorrectB'")
@@ -223,7 +230,7 @@ class PedRefiner:
 
             self.l.debug("writing output")
             with open(opt_file_name, 'w') as fp:
-                for idx in self.opt_vec:
+                for idx in self.opt_set:    # self.opt_vec: # TODO: was vec
                     fp.write("{0}{2}{1[0]}{2}{1[1]}\n".format(idx, self.opt_map[idx], sep_out))
         else:
             self.l.error(" * AnimalID list file {} could not be open to read.".format(list_file_name))
@@ -233,12 +240,13 @@ class PedRefiner:
         return self.isValid
 
     def __single_populate_opt_map(self, idx):
+        # asserted idx!=self.missing_out
         if idx in self.opt_map and self.rec_gen_max == 0:  # already in output ped, and no recGen restriction
             return
 
         self.rec_gen += 1
         if self.rec_gen > self.rec_gen_max > 0:
-            if idx != self.missing_out and idx not in self.opt_map:
+            if idx not in self.opt_map:
                 self.opt_map[idx] = (self.missing_out, self.missing_out)
             self.rec_gen -= 1
             return
@@ -256,9 +264,7 @@ class PedRefiner:
         else:  # not found
             sire = dam = self.missing_out
 
-        if idx != self.missing_out:
-            self.opt_map[idx] = (sire, dam)
-
+        self.opt_map[idx] = (sire, dam)
         self.rec_gen -= 1
 
     def __populate_opt_map(self, anm_list, rec_gen_max=0):
@@ -277,14 +283,19 @@ class PedRefiner:
             self.__single_populate_opt_vec(idx)
             
     def __single_populate_opt_vec(self, idx):
+        if idx in self.opt_set:
+            return
+
         sire, dam = self.opt_map[idx]
         if sire != self.missing_out:
             self.__single_populate_opt_vec(sire)
         if dam != self.missing_out:
             self.__single_populate_opt_vec(dam)
-        if idx not in self.opt_set:
-            self.opt_vec.append(idx)
-            self.opt_set.add(idx)
+
+        self.opt_set[idx] = None
+        # if idx not in self.opt_set:
+        #    self.opt_vec.append(idx)
+        #    self.opt_set.add(idx)
 
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, missing_in='.', missing_out='.',
                  sep_in=',', sep_out=',', xref_fn=None, flag_r=False):
