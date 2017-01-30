@@ -301,30 +301,30 @@ class PedRefiner:
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, missing_in='.', missing_out='.',
                  sep_in=',', sep_out=',', xref_fn=None, flag_r=False):
         """
-        Suggested usage of PedRefiner: the pipeline() method.
+Suggested usage of PedRefiner: the pipeline() method.
 
-        :param  1 lst_fn:              file containing animal list to be grepped from the pedigree, one line each
-        :param  2 ped_fn:              input pedigree file, 3 col
-        :param  3 opt_fn:              output pedigree file, 3 col
-        :param  4 gen_max:     (0)     maximum recursive generation to grep for EVERYONE in lst_fn
-        :param  5 missing_in:  ('.')   missing value for input file, default = '.'
-        :param  6 missing_out: ('.')   missing value for output file, default = '.'
-        :param  7 sep_in:      (',')   separator for input file, default = ',' i.e. csv
-        :param  8 sep_out:     (',')   separator for output file, default = ',', i.e. csv
-        :param  9 xref_fn:     (None)  cross-reference file to modify output pedigree
-        :param 10 flag_r:      (False) bool, output descendant IDs if True
+:param  1 lst_fn:              file containing animal list to be grepped from the pedigree, one line each
+:param  2 ped_fn:              input pedigree file, 3 col
+:param  3 opt_fn:              output pedigree file, 3 col
+:param  4 gen_max:     (0)     maximum recursive generation to grep for EVERYONE in lst_fn
+:param  5 missing_in:  ('.')   missing value for input file, default = '.'
+:param  6 missing_out: ('.')   missing value for output file, default = '.'
+:param  7 sep_in:      (',')   separator for input file, default = ',' i.e. csv
+:param  8 sep_out:     (',')   separator for output file, default = ',', i.e. csv
+:param  9 xref_fn:     (None)  cross-reference file to modify output pedigree
+:param 10 flag_r:      (False) bool, output descendant IDs if True
 
-        Example
+Example
 
-        - Python
-            from pedRefiner import PedRefiner
-            pr = PedRefiner()
-            # pr.help()
-            pr.pipeline('animal_list', 'ped.input.csv', 'ped.output.csv', gen_max=3)
+- Python
+    from pedRefiner import PedRefiner
+    pr = PedRefiner()
+    # pr.help()
+    pr.pipeline('animal_list', 'ped.input.csv', 'ped.output.csv', gen_max=3)
 
-        - Bash
-            #             1       2             3               4gen_max  5missin  6missout  7sepin 8sepout 9    10
-            pedRefiner.py ANM_LST PED_INPUT.csv PED_OUTPUT.csv [3         0        0         ,      ,       xref True]
+- Bash
+    #             1       2             3               4gen_max  5missin  6missout  7sepin 8sepout 9    10
+    pedRefiner.py ANM_LST PED_INPUT.csv PED_OUTPUT.csv [3         0        0         ,      ,       xref True]
         """
         if xref_fn is not None:
             self.l.debug('loading xref')
