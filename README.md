@@ -1,4 +1,4 @@
-# pedRefiner [![Build Status](https://travis-ci.org/cbkmephisto/pedRefiner.svg?branch=master)](https://travis-ci.org/cbkmephisto/pedRefiner)
+# pedRefiner [![Build Status](https://travis-ci.org/cbkmephisto/pedRefiner.svg?branch=recursive_version)](https://travis-ci.org/cbkmephisto/pedRefiner)
 Trivial tool that takes a list of animal IDs, extracts a csv pedigree file for the given IDs and all their ancestors' IDs, builds a new pedigree file with them sorted, and prints it on screen (stdout). Can be redirected into a new csv file.
 
 ```
