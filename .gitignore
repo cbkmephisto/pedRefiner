@@ -1,0 +1,8 @@
+__pycache__
+.idea
+.ipynb_checkpoints
+*.gz
+peg20*
+*.pdf
+*.html
+.DS_Store

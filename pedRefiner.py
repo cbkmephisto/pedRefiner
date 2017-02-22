@@ -73,7 +73,7 @@ class PedRefiner:
             with open(file_name, 'r') as fp:
                 for line in fp:
                     vec_tmp = line.split()
-                    if len(vec_tmp[0]) == 0 or vec_tmp[0][0] == "#":  # ignore empty or comment lines
+                    if not vec_tmp[0] or vec_tmp[0][0] == "#":  # ignore empty or comment lines
                         continue
                     if len(vec_tmp) != 3:
                         self.l.error("PedMap::load_xref_map() ERROR - xref file {} is not a 3-col-through file."
@@ -285,7 +285,7 @@ class PedRefiner:
         # pre-order
         td_lst = [id_inp]
         map_id2gen = {id_inp: 1}
-        while len(td_lst):
+        while td_lst:
             idx = td_lst.pop()
             # self.l.debug("ID = {}, gen = {}".format(idx, cur_gen))
             # if current id in output map and no rec_gen limit, skip
@@ -327,7 +327,7 @@ class PedRefiner:
         self.rec_gen_max = rec_gen_max
         for id_inp in anm_list:
             idx = id_inp.strip()
-            if idx != self.missing_out and len(idx):
+            if idx != self.missing_out and idx:
                 self.stem = idx
                 self.rec_gen = 1
                 # self.__single_populate_opt_map(idx)
@@ -367,7 +367,7 @@ class PedRefiner:
 
         td_lst = [id_inp]
         td_lst2 = []
-        while len(td_lst):
+        while td_lst:
             idx = td_lst.pop()
             td_lst2.append(idx)
             self.set_done.add(idx)
@@ -376,7 +376,7 @@ class PedRefiner:
                 td_lst.append(dam)
             if sire != self.missing_out and sire not in self.set_done:
                 td_lst.append(sire)
-        while len(td_lst2):
+        while td_lst2:
             idx = td_lst2.pop()
             self.opt_set[idx] = None    # just store the ordered key
             # self.l.debug("        insert {}".format(id_inp))
