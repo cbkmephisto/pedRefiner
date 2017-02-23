@@ -44,6 +44,7 @@ Example
  - force accepting the latest version if multiple entries for the same animal were detected;
  
 ### [Updates]
+ - version 2017-02-23 prevent unexpected order for complex pedigree while specifying rec_gen_max
  - version 2017-02-22
     - modified to be a non-recursive version to prevent segmentation fault for a very very very long pedigree
     - only maintaining python version

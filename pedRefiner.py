@@ -372,13 +372,40 @@ class PedRefiner:
             td_lst2.append(idx)
             self.set_done.add(idx)
             sire, dam = self.opt_map[idx]
+            # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
+            """ 20170223
+            A B     A
+             C D     H
+              E       G
+                  F
+
+            'A' needs to be stacked after 'H', but in fact it is 'C' in ORIGINAL CODE
+            to fix this, need an extra set in the 2nd while loop
+            ===================== ORIGINAL CODE before 20170223
             if dam != self.missing_out and dam not in self.set_done:
                 td_lst.append(dam)
             if sire != self.missing_out and sire not in self.set_done:
                 td_lst.append(sire)
+            """
+            # push dam/sire again in order to make them appear prior to offspring
+            if dam in self.set_done:
+                td_lst2.append(dam)
+            elif dam != self.missing_out:
+                td_lst.append(dam)
+
+            if sire in self.set_done:
+                td_lst2.append(sire)
+            elif sire != self.missing_out:
+                td_lst.append(sire)
+
+        # local set_done to process only the first occurrence in td_lst2
+        local_set_done = set()
         while td_lst2:
             idx = td_lst2.pop()
-            self.opt_set[idx] = None    # just store the ordered key
+            if idx not in local_set_done:
+                self.opt_set[idx] = None    # just store the ordered key
+                local_set_done.add(idx)
+
             # self.l.debug("        insert {}".format(id_inp))
 
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, missing_in='.', missing_out='.',
