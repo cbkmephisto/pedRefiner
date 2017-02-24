@@ -31,6 +31,7 @@ import logging
 from collections import OrderedDict
 
 
+# RECURSIVE VERSION
 class PedRefiner:
     def __init__(self):
         self.isValid = False
