@@ -56,7 +56,7 @@ class PedRefiner:
 #        self.opt_vec = []
 #        self.opt_set = set()
         self.opt_set = OrderedDict()
-        self.set_done = set()
+        # self.set_done = set()
         # self.l.info("PedRefiner().pipeline\n{}".format(self.pipeline.__doc__))
 
     def load_xref_map(self, file_name):
@@ -335,7 +335,7 @@ class PedRefiner:
         
         # make a sorted list in self.opt_vec
         self.l.debug("{} individuals in the result ped. sorting...".format(len(self.opt_map)))
-        self.set_done = set()
+        # self.set_done = set()
         for idx in self.opt_map:
             # self.__single_populate_opt_vec(idx)
             self.__single_populate_opt_vec_non_rec(idx)
@@ -372,7 +372,7 @@ class PedRefiner:
         while td_lst:
             idx = td_lst.pop()
             td_lst2.append(idx)
-            self.set_done.add(idx)
+            # self.set_done.add(idx)
             local_set_done.add(idx)
             sire, dam = self.opt_map[idx]
             # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
