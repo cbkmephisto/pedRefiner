@@ -56,6 +56,7 @@ class PedRefiner:
 #        self.opt_vec = []
 #        self.opt_set = set()
         self.opt_set = OrderedDict()
+        # self.set_done = set()
         # self.l.info("PedRefiner().pipeline\n{}".format(self.pipeline.__doc__))
 
     def load_xref_map(self, file_name):
@@ -72,7 +73,7 @@ class PedRefiner:
             with open(file_name, 'r') as fp:
                 for line in fp:
                     vec_tmp = line.split()
-                    if len(vec_tmp[0]) == 0 or vec_tmp[0][0] == "#":  # ignore empty or comment lines
+                    if not vec_tmp[0] or vec_tmp[0][0] == "#":  # ignore empty or comment lines
                         continue
                     if len(vec_tmp) != 3:
                         self.l.error("PedMap::load_xref_map() ERROR - xref file {} is not a 3-col-through file."
@@ -240,63 +241,177 @@ class PedRefiner:
         self.l.debug("refine() is returning [{}]".format(self.isValid))
         return self.isValid
 
-    def __single_populate_opt_map(self, idx):
+    # def __single_populate_opt_map(self, idx):
+    #     # asserted idx!=self.missing_out
+    #
+    #     # already in output ped, and no recGen restriction
+    #     #   If idx in output ped but recGenMax > 0, it is possible to get different results for complex pedigree
+    #     #   For example, if recGen == 3, idx in output ped being grand sire of some listed animals,
+    #     #       and idx itself is in the list, it is expected that we go on with idx for 2 more generations.
+    #     if idx in self.opt_map and self.rec_gen_max == 0:
+    #         return
+    #
+    #     self.rec_gen += 1
+    #     if self.rec_gen > self.rec_gen_max > 0:
+    #         if idx not in self.opt_map:
+    #             self.opt_map[idx] = (self.missing_out, self.missing_out)
+    #         self.rec_gen -= 1
+    #         return
+    #
+    #     if idx in self.ped_map:     # in input ped
+    #         sire, dam = self.ped_map[idx]
+    #         if sire != self.missing_out:
+    #             self.__single_populate_opt_map(sire)
+    #         if dam != self.missing_out:
+    #             self.__single_populate_opt_map(dam)
+    #
+    #         # 20150629: prevent loop
+    #         if sire == self.stem or dam == self.stem:
+    #             self.stem_fault = True
+    #     else:  # not found
+    #         sire = dam = self.missing_out
+    #
+    #     self.opt_map[idx] = (sire, dam)
+    #     self.rec_gen -= 1
+
+    # 20170222: non-recursive version
+    def __single_populate_opt_map_non_rec(self, id_inp):
+        """
+        Populate all possible results for a single id, in a non recursive manner
+        :param id_inp:
+        :return:
+        """
         # asserted idx!=self.missing_out
-        if idx in self.opt_map and self.rec_gen_max == 0:  # already in output ped, and no recGen restriction
-            return
+        # pre-order
+        td_lst = [id_inp]
+        map_id2gen = {id_inp: 1}
+        while td_lst:
+            idx = td_lst.pop()
+            # self.l.debug("ID = {}, gen = {}".format(idx, cur_gen))
+            # if current id in output map and no rec_gen limit, skip
+            #   because all ancestors of id have been in opt_map
+            if idx in self.opt_map and self.rec_gen_max == 0:
+                continue
 
-        self.rec_gen += 1
-        if self.rec_gen > self.rec_gen_max > 0:
-            if idx not in self.opt_map:
-                self.opt_map[idx] = (self.missing_out, self.missing_out)
-            self.rec_gen -= 1
-            return
+            if idx in map_id2gen:
+                cur_gen = map_id2gen.pop(idx)
+            else:
+                cur_gen = 1
 
-        if idx in self.ped_map:     # in input ped
-            sire, dam = self.ped_map[idx]
-            if sire != self.missing_out:
-                self.__single_populate_opt_map(sire)
-            if dam != self.missing_out:
-                self.__single_populate_opt_map(dam)
+            if 0 < self.rec_gen_max <= cur_gen:
+                if idx not in self.opt_map:
+                    self.opt_map[idx] = (self.missing_out, self.missing_out)
+                continue
 
-            # 20150629: prevent loop
-            if sire == self.stem or dam == self.stem:
-                self.stem_fault = True
-        else:  # not found
-            sire = dam = self.missing_out
+            if idx in self.ped_map:  # in input ped
+                sire, dam = self.ped_map[idx]
+                if dam != self.missing_out:
+                    td_lst.append(dam)
+                    map_id2gen[dam] = cur_gen + 1
+                if sire != self.missing_out:
+                    td_lst.append(sire)
+                    map_id2gen[sire] = cur_gen + 1
 
-        self.opt_map[idx] = (sire, dam)
-        self.rec_gen -= 1
+                # 20150629: prevent loop
+                if sire == self.stem or dam == self.stem:
+                    self.stem_fault = True
+            else:  # not found
+                sire = dam = self.missing_out
+
+            self.opt_map[idx] = (sire, dam)
 
     def __populate_opt_map(self, anm_list, rec_gen_max=0):
         self.opt_map = {}
-        self.opt_vec = []
+        # self.opt_vec = []
+        self.opt_set = OrderedDict()
         self.rec_gen_max = rec_gen_max
-        for idx in anm_list:
-            if idx != self.missing_out:
+        for id_inp in anm_list:
+            idx = id_inp.strip()
+            if idx != self.missing_out and idx:
                 self.stem = idx
                 self.rec_gen = 1
-                self.__single_populate_opt_map(idx)
+                # self.__single_populate_opt_map(idx)
+                self.__single_populate_opt_map_non_rec(idx)
         
         # make a sorted list in self.opt_vec
         self.l.debug("{} individuals in the result ped. sorting...".format(len(self.opt_map)))
+        # self.set_done = set()
         for idx in self.opt_map:
-            self.__single_populate_opt_vec(idx)
+            # self.__single_populate_opt_vec(idx)
+            self.__single_populate_opt_vec_non_rec(idx)
             
-    def __single_populate_opt_vec(self, idx):
-        if idx in self.opt_set:
+    # def __single_populate_opt_vec(self, idx):
+    #     if idx in self.opt_set:
+    #         return
+    #
+    #     sire, dam = self.opt_map[idx]
+    #     if sire != self.missing_out:
+    #         self.__single_populate_opt_vec(sire)
+    #     if dam != self.missing_out:
+    #         self.__single_populate_opt_vec(dam)
+    #
+    #     self.opt_set[idx] = None
+    #     # if idx not in self.opt_set:
+    #     #    self.opt_vec.append(idx)
+    #     #    self.opt_set.add(idx)
+
+    # 20170222: non recursive version
+    def __single_populate_opt_vec_non_rec(self, id_inp):
+        """
+        Populate sorted output order, in a non recursive manner
+        :param id_inp:
+        :return:
+        """
+        if id_inp in self.opt_set:
             return
 
-        sire, dam = self.opt_map[idx]
-        if sire != self.missing_out:
-            self.__single_populate_opt_vec(sire)
-        if dam != self.missing_out:
-            self.__single_populate_opt_vec(dam)
+        # local set_done to process only the first occurrence in td_lst2
+        local_set_done = set()
+        td_lst = [id_inp]
+        td_lst2 = []
+        while td_lst:
+            idx = td_lst.pop()
+            td_lst2.append(idx)
+            # self.set_done.add(idx)
+            local_set_done.add(idx)
+            sire, dam = self.opt_map[idx]
+            # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
+            """ 20170223
+            A B     A
+             C D     H
+              E       G
+                  F
 
-        self.opt_set[idx] = None
-        # if idx not in self.opt_set:
-        #    self.opt_vec.append(idx)
-        #    self.opt_set.add(idx)
+            'A' needs to be stacked after 'H', but in fact it is 'C' in ORIGINAL CODE
+            to fix this, need an extra set in the 2nd while loop
+            ===================== ORIGINAL CODE before 20170223
+            if dam != self.missing_out and dam not in self.set_done:
+                td_lst.append(dam)
+            if sire != self.missing_out and sire not in self.set_done:
+                td_lst.append(sire)
+            """
+            # push dam/sire again in order to make them appear prior to offspring
+            if dam not in self.opt_set:    # 20170224: ignore if already in a previously processed tree
+                if dam in local_set_done:
+                    td_lst.append(dam)      # process again, in order to promote it and its ancestors
+                elif dam != self.missing_out:
+                    td_lst.append(dam)
+
+            if sire not in self.opt_set:
+                if sire in local_set_done:
+                    td_lst.append(sire)
+                elif sire != self.missing_out:
+                    td_lst.append(sire)
+
+        # local set_done to process only the first occurrence in td_lst2
+        local_set_done = set()
+        while td_lst2:
+            idx = td_lst2.pop()
+            if idx not in local_set_done:
+                self.opt_set[idx] = None    # just store the ordered key
+                local_set_done.add(idx)
+
+            # self.l.debug("        insert {}".format(id_inp))
 
     def pipeline(self, lst_fn, ped_fn, opt_fn, gen_max=0, missing_in='.', missing_out='.',
                  sep_in=',', sep_out=',', xref_fn=None, flag_r=False):
