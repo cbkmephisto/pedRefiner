@@ -391,13 +391,13 @@ class PedRefiner:
                 td_lst.append(sire)
             """
             # push dam/sire again in order to make them appear prior to offspring
-            if dam not in self.set_done:    # 20170224: ignore if already in a previously processed tree
+            if dam not in self.opt_set:    # 20170224: ignore if already in a previously processed tree
                 if dam in local_set_done:
                     td_lst.append(dam)      # process again, in order to promote it and its ancestors
                 elif dam != self.missing_out:
                     td_lst.append(dam)
 
-            if sire not in self.set_done:
+            if sire not in self.opt_set:
                 if sire in local_set_done:
                     td_lst.append(sire)
                 elif sire != self.missing_out:
