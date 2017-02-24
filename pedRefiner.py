@@ -99,6 +99,7 @@ class PedRefiner:
         self.missing_in = missing_in
         self.missing_out = missing_out
         self.ped_map = {}
+        self.isValid = False
         if os.path.exists(file_name):
             with open(file_name, 'r') as fp:
                 line_vec = fp.read().splitlines()
@@ -116,12 +117,15 @@ class PedRefiner:
         if len_x == 3:
             vec_tmp = line.split(sep)
             for i in range(3):
-                idx = vec_tmp[i]
+                idx = vec_tmp[i].strip()
                 if idx == self.missing_in:
                     idx = self.missing_out
                 # 20150702 mapXref
                 if idx in self.mapXrefA:   # vec_tmp[i] is in the xrefA map
                     idx = self.mapXrefA[idx]
+                if not idx:
+                    self.l.error("  * Error reading ped file: empty field detected, in line '{}'".format(line))
+                    ret = False
                 vec_tmp[i] = idx
             idx, sire, dam = vec_tmp
             if sire in self.mapXrefS:       # vec_tmp[1] is in the xrefS map
@@ -137,7 +141,7 @@ class PedRefiner:
                         sire = self.missing_out
                     if idx == dam:
                         dam = self.missing_out
-                    self.ped_map[idx] = (sire, dam)
+                    p = (sire, dam)
 
                 if idx not in self.ped_map:            # new entry
                     self.ped_map[idx] = p
@@ -191,24 +195,29 @@ class PedRefiner:
         # inserting intersection of Sire and Dam
         # print out the intersection and its count to support what gender it was
         intersection = set(map_s2i.keys()).intersection(map_d2i.keys())
-        if len(intersection) > 1:  # 1 is always self.missing_out
-            self.l.warning("  * B Error: IDs appeared in both sire and dam columns. Use 'xref.CorrectB'" +
-                           " as a xref file for the next run.")
-            self.l.warning("    - creating 'xref.CorrectB'")
-            ret = False
-            with open('xref.CorrectB', 'w') as fp:
-                for idx in intersection:
-                    cnt_s = map_s2i[idx]
-                    cnt_d = map_d2i[idx]
-                    if cnt_s == cnt_d:
-                        s_op = "A"
-                    elif cnt_s > cnt_d:
-                        s_op = "D"
-                    else:
-                        s_op = "S"
+        if len(intersection):  # consider self.missing_out
+            for idx in intersection:
+                if idx == self.missing_out:
+                    continue
+                self.l.warning("  * B Error: IDs appeared in both sire and dam columns. Use 'xref.CorrectB'" +
+                               " as a xref file for the next run.")
+                self.l.warning("    - creating 'xref.CorrectB'")
+                ret = False
+                with open('xref.CorrectB', 'w') as fp:
+                    for idd in intersection:
+                        if idd == self.missing_out:
+                            continue
+                        cnt_s = map_s2i[idd]
+                        cnt_d = map_d2i[idd]
+                        if cnt_s == cnt_d:
+                            s_op = "A"
+                        elif cnt_s > cnt_d:    # sire more, change dam
+                            s_op = "D"
+                        else:
+                            s_op = "S"         # dam more, change sire
 
-                    s_op = "{} {} {}\n".format(s_op, idx, self.missing_out)
-                    fp.write(s_op)
+                        s_op = "{} {} {}\n".format(s_op, idd, self.missing_out)
+                        fp.write(s_op)
         return ret
 
     def get_offspring_set(self, idx):
@@ -228,6 +237,7 @@ class PedRefiner:
 
             if self.stem_fault:
                 self.l.error("  * L Pedigree loop detected while filling result set, stem = {}".format(self.stem))
+                self.isValid = False
             else:
                 self.isValid = True
                 self.l.debug("writing output")
@@ -311,10 +321,6 @@ class PedRefiner:
                 if sire != self.missing_out:
                     td_lst.append(sire)
                     map_id2gen[sire] = cur_gen + 1
-
-                # 20150629: prevent loop
-                if sire == self.stem or dam == self.stem:
-                    self.stem_fault = True
             else:  # not found
                 sire = dam = self.missing_out
 
@@ -328,7 +334,7 @@ class PedRefiner:
         for id_inp in anm_list:
             idx = id_inp.strip()
             if idx != self.missing_out and idx:
-                self.stem = idx
+                # self.stem = idx
                 self.rec_gen = 1
                 # self.__single_populate_opt_map(idx)
                 self.__single_populate_opt_map_non_rec(idx)
@@ -366,14 +372,25 @@ class PedRefiner:
             return
 
         # local set_done to process only the first occurrence in td_lst2
-        local_set_done = set()
+        local_map_done = dict()
         td_lst = [id_inp]
         td_lst2 = []
         while td_lst:
             idx = td_lst.pop()
             td_lst2.append(idx)
             # self.set_done.add(idx)
-            local_set_done.add(idx)
+            if idx in local_map_done:
+                local_map_done[idx] += 1
+            else:
+                local_map_done[idx] = 1
+
+            # 20150629: prevent loop
+            # 20170224: moved here. if an animal appeared in a pedigree tree more than 10k times, it should be...
+            if local_map_done[idx] > 10000:
+                self.stem = "[{}], repeated > 10000: [{}]".format(id_inp, idx)
+                self.stem_fault = True
+                break
+
             sire, dam = self.opt_map[idx]
             # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
             """ 20170223
@@ -392,13 +409,13 @@ class PedRefiner:
             """
             # push dam/sire again in order to make them appear prior to offspring
             if dam not in self.opt_set:    # 20170224: ignore if already in a previously processed tree
-                if dam in local_set_done:
+                if dam in local_map_done:
                     td_lst.append(dam)      # process again, in order to promote it and its ancestors
                 elif dam != self.missing_out:
                     td_lst.append(dam)
 
             if sire not in self.opt_set:
-                if sire in local_set_done:
+                if sire in local_map_done:
                     td_lst.append(sire)
                 elif sire != self.missing_out:
                     td_lst.append(sire)
@@ -446,8 +463,8 @@ Example
             self.load_xref_map(xref_fn)
         self.l.debug('loading ped and then check')
         ret_load = self.load_ped(ped_fn, sep_in, missing_in, missing_out)
-        ret_check = self.check()
         if ret_load:
+            ret_check = self.check()
             if ret_check:
                 self.refine(lst_fn, opt_fn, int(gen_max), sep_out, bool(flag_r))
             else:
