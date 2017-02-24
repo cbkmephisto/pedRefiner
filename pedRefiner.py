@@ -241,38 +241,38 @@ class PedRefiner:
         self.l.debug("refine() is returning [{}]".format(self.isValid))
         return self.isValid
 
-    def __single_populate_opt_map(self, idx):
-        # asserted idx!=self.missing_out
-
-        # already in output ped, and no recGen restriction
-        #   If idx in output ped but recGenMax > 0, it is possible to get different results for complex pedigree
-        #   For example, if recGen == 3, idx in output ped being grand sire of some listed animals,
-        #       and idx itself is in the list, it is expected that we go on with idx for 2 more generations.
-        if idx in self.opt_map and self.rec_gen_max == 0:
-            return
-
-        self.rec_gen += 1
-        if self.rec_gen > self.rec_gen_max > 0:
-            if idx not in self.opt_map:
-                self.opt_map[idx] = (self.missing_out, self.missing_out)
-            self.rec_gen -= 1
-            return
-
-        if idx in self.ped_map:     # in input ped
-            sire, dam = self.ped_map[idx]
-            if sire != self.missing_out:
-                self.__single_populate_opt_map(sire)
-            if dam != self.missing_out:
-                self.__single_populate_opt_map(dam)
-
-            # 20150629: prevent loop
-            if sire == self.stem or dam == self.stem:
-                self.stem_fault = True
-        else:  # not found
-            sire = dam = self.missing_out
-
-        self.opt_map[idx] = (sire, dam)
-        self.rec_gen -= 1
+    # def __single_populate_opt_map(self, idx):
+    #     # asserted idx!=self.missing_out
+    #
+    #     # already in output ped, and no recGen restriction
+    #     #   If idx in output ped but recGenMax > 0, it is possible to get different results for complex pedigree
+    #     #   For example, if recGen == 3, idx in output ped being grand sire of some listed animals,
+    #     #       and idx itself is in the list, it is expected that we go on with idx for 2 more generations.
+    #     if idx in self.opt_map and self.rec_gen_max == 0:
+    #         return
+    #
+    #     self.rec_gen += 1
+    #     if self.rec_gen > self.rec_gen_max > 0:
+    #         if idx not in self.opt_map:
+    #             self.opt_map[idx] = (self.missing_out, self.missing_out)
+    #         self.rec_gen -= 1
+    #         return
+    #
+    #     if idx in self.ped_map:     # in input ped
+    #         sire, dam = self.ped_map[idx]
+    #         if sire != self.missing_out:
+    #             self.__single_populate_opt_map(sire)
+    #         if dam != self.missing_out:
+    #             self.__single_populate_opt_map(dam)
+    #
+    #         # 20150629: prevent loop
+    #         if sire == self.stem or dam == self.stem:
+    #             self.stem_fault = True
+    #     else:  # not found
+    #         sire = dam = self.missing_out
+    #
+    #     self.opt_map[idx] = (sire, dam)
+    #     self.rec_gen -= 1
 
     # 20170222: non-recursive version
     def __single_populate_opt_map_non_rec(self, id_inp):
@@ -340,20 +340,20 @@ class PedRefiner:
             # self.__single_populate_opt_vec(idx)
             self.__single_populate_opt_vec_non_rec(idx)
             
-    def __single_populate_opt_vec(self, idx):
-        if idx in self.opt_set:
-            return
-
-        sire, dam = self.opt_map[idx]
-        if sire != self.missing_out:
-            self.__single_populate_opt_vec(sire)
-        if dam != self.missing_out:
-            self.__single_populate_opt_vec(dam)
-
-        self.opt_set[idx] = None
-        # if idx not in self.opt_set:
-        #    self.opt_vec.append(idx)
-        #    self.opt_set.add(idx)
+    # def __single_populate_opt_vec(self, idx):
+    #     if idx in self.opt_set:
+    #         return
+    #
+    #     sire, dam = self.opt_map[idx]
+    #     if sire != self.missing_out:
+    #         self.__single_populate_opt_vec(sire)
+    #     if dam != self.missing_out:
+    #         self.__single_populate_opt_vec(dam)
+    #
+    #     self.opt_set[idx] = None
+    #     # if idx not in self.opt_set:
+    #     #    self.opt_vec.append(idx)
+    #     #    self.opt_set.add(idx)
 
     # 20170222: non recursive version
     def __single_populate_opt_vec_non_rec(self, id_inp):
@@ -365,12 +365,15 @@ class PedRefiner:
         if id_inp in self.opt_set:
             return
 
+        # local set_done to process only the first occurrence in td_lst2
+        local_set_done = set()
         td_lst = [id_inp]
         td_lst2 = []
         while td_lst:
             idx = td_lst.pop()
             td_lst2.append(idx)
             self.set_done.add(idx)
+            local_set_done.add(idx)
             sire, dam = self.opt_map[idx]
             # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
             """ 20170223
@@ -388,15 +391,17 @@ class PedRefiner:
                 td_lst.append(sire)
             """
             # push dam/sire again in order to make them appear prior to offspring
-            if dam in self.set_done:
-                td_lst2.append(dam)
-            elif dam != self.missing_out:
-                td_lst.append(dam)
+            if dam not in self.set_done:    # 20170224: ignore if already in a previously processed tree
+                if dam in local_set_done:
+                    td_lst.append(dam)      # process again, in order to promote it and its ancestors
+                elif dam != self.missing_out:
+                    td_lst.append(dam)
 
-            if sire in self.set_done:
-                td_lst2.append(sire)
-            elif sire != self.missing_out:
-                td_lst.append(sire)
+            if sire not in self.set_done:
+                if sire in local_set_done:
+                    td_lst.append(sire)
+                elif sire != self.missing_out:
+                    td_lst.append(sire)
 
         # local set_done to process only the first occurrence in td_lst2
         local_set_done = set()
