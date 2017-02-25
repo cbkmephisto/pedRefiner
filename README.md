@@ -45,7 +45,7 @@ Example
 
        # cmd = D  : All ID1 in the [D]am  (3rd) column will be changed to ID2
        D ID1 ID2
-       ```
+```
 
  - force accepting the latest version if multiple entries for the same animal were detected;
  
