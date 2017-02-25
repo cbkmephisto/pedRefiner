@@ -375,21 +375,24 @@ class PedRefiner:
         local_map_done = dict()
         td_lst = [id_inp]
         td_lst2 = []
+        len_lmd = 0
         while td_lst:
             idx = td_lst.pop()
             td_lst2.append(idx)
             # self.set_done.add(idx)
             if idx in local_map_done:
                 local_map_done[idx] += 1
+                # 20150629: prevent loop
+                # 20170224: moved here. if an animal appeared in a pedigree tree more than 10k times, it should be...
+                # 20170225: if a pedigree tree contained N individuals, it is not possible that any individual appeared
+                #           > N times.
+                if local_map_done[idx] > len_lmd:
+                    self.stem = "[{}], tree_size = [{}], repeated > tree_size: [{}]".format(id_inp, len_lmd, idx)
+                    self.stem_fault = True
+                    break
             else:
                 local_map_done[idx] = 1
-
-            # 20150629: prevent loop
-            # 20170224: moved here. if an animal appeared in a pedigree tree more than 10k times, it should be...
-            if local_map_done[idx] > 10000:
-                self.stem = "[{}], repeated > 10000: [{}]".format(id_inp, idx)
-                self.stem_fault = True
-                break
+                len_lmd += 1
 
             sire, dam = self.opt_map[idx]
             # 20170223: prevent unexpected order for complex pedigree while specifying rec_gen_max
