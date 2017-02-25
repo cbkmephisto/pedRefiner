@@ -36,11 +36,17 @@ Example
  - ~~if '-r' option is given, prints out all the descendants' IDs from the anmList file instead of print out the refined pedigree;~~
  - xref the pedigree info if specified a whitespace-delimited 3-col xref file with 1st col as command:
 ```
-       #          : line starting with sharp will be ignored
-       A ID1 ID2  : all ID1 (col1, 2 and 3) will be changed to ID2
-       S ID1 ID2  : all ID1 in the sire (2nd) column will be changed to ID2
-       D ID1 ID2  : all ID1 in the dam  (3rd) column will be changed to ID2
-```
+       # line starting with sharp will be ignored
+       # cmd = A  : [A]ll ID1 (col1, 2 and 3) will be changed to ID2
+       A ID1 ID2
+
+       # cmd = S  : All ID1 in the [S]ire (2nd) column will be changed to ID2
+       S ID1 ID2
+
+       # cmd = D  : All ID1 in the [D]am  (3rd) column will be changed to ID2
+       D ID1 ID2
+       ```
+
  - force accepting the latest version if multiple entries for the same animal were detected;
  
 ### [Updates]

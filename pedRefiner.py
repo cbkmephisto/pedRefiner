@@ -442,12 +442,12 @@ Suggested usage of PedRefiner: the pipeline() method.
 :param  2 ped_fn:              input pedigree file, 3 col
 :param  3 opt_fn:              output pedigree file, 3 col
 :param  4 gen_max:     (0)     maximum recursive generation to grep for EVERYONE in lst_fn
-:param  5 missing_in:  ('.')   missing value for input file, default = '.'
-:param  6 missing_out: ('.')   missing value for output file, default = '.'
-:param  7 sep_in:      (',')   separator for input file, default = ',' i.e. csv
-:param  8 sep_out:     (',')   separator for output file, default = ',', i.e. csv
+:param  5 missing_in:  ('.')   missing value in input file, default = '.'
+:param  6 missing_out: ('.')   missing value in output file, default = '.'
+:param  7 sep_in:      (',')   field separator in input file, default = ',' i.e. csv
+:param  8 sep_out:     (',')   field separator in output file, default = ',', i.e. csv
 :param  9 xref_fn:     (None)  cross-reference file to modify output pedigree
-:param 10 flag_r:      (False) bool, output descendant IDs if True
+:param 10 flag_r:      (False) bool, output descendant IDs if True. TODO: not implemented yet in Python version
 
 Example
 
