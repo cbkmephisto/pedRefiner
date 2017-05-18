@@ -18,7 +18,7 @@ setup(
     url='https://github.com/cbkmephisto/pedRefiner.py',
     # I'll explain this in a second
     download_url='https://github.com/cbkmephisto/' +
-                 'pedRefiner.py/archive/master.zip',
+                 'pedRefiner.py/archive/0.1.zip',
     # arbitrary keywords
     keywords=['pedigree', 'refine', 'extract', 'ancestors'],
     classifiers=[],
