@@ -7,4 +7,5 @@ peg20*
 *.html
 .DS_Store
 README
+dist
 

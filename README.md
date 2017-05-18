@@ -2,6 +2,16 @@
 
 Trivial tool that takes a list of animal IDs, extracts a pedigree file for the given IDs and all their ancestors' IDs, builds a new pedigree file with them sorted, and dumps the output to a new file.
 
+### [Install]
+In terminal, execute
+```bash
+pip3 install pedRefiner
+# pip2 may be working, for python2.x
+```
+
+Afterwards command `pedRefiner.py` could be launched anywhere.
+
+### [Usage]
 ```
 pedRefiner.py 
 
@@ -17,18 +27,22 @@ Suggested usage of PedRefiner: the pipeline() method.
 :param  8 sep_out:     (',')   separator for output file, default = ',', i.e. csv
 :param  9 xref_fn:     (None)  cross-reference file to modify output pedigree
 :param 10 flag_r:      (False) bool, output descendant IDs if True
+```
 
-Example
+##### Example
 
 - Python
-    from pedRefiner import PedRefiner
-    pr = PedRefiner()
-    # pr.help()
-    pr.pipeline('animal_list', 'ped.input.csv', 'ped.output.csv', gen_max=3)
+```python
+from pedRefiner import PedRefiner
+pr = PedRefiner()
+# pr.help()
+pr.pipeline('animal_list', 'ped.input.csv', 'ped.output.csv', gen_max=3)
+```
 
 - Bash
-    #             1       2             3               4gen_max  5missin  6missout  7sepin 8sepout 9    10
-    pedRefiner.py ANM_LST PED_INPUT.csv PED_OUTPUT.csv [3         0        0         ,      ,       xref True]
+```bash
+#             1       2             3               4gen_max  5missin  6missout  7sepin 8sepout 9    10
+pedRefiner.py ANM_LST PED_INPUT.csv PED_OUTPUT.csv [3         0        0         ,      ,       xref True]
 ```
 
 ### [Description]
