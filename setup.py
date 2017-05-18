@@ -17,9 +17,9 @@ setup(
     # use the URL to the github repo
     url='https://github.com/cbkmephisto/pedRefiner.py',
     # I'll explain this in a second
-    download_url=\
-      'https://github.com/cbkmephisto/pedRefiner.py/archive/master.zip',
+    download_url='https://github.com/cbkmephisto/' +
+                 'pedRefiner.py/archive/master.zip',
     # arbitrary keywords
-    keywords=['pedigree', 'refine', 'extract'],
+    keywords=['pedigree', 'refine', 'extract', 'ancestors'],
     classifiers=[],
 )
